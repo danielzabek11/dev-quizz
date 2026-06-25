@@ -28,7 +28,7 @@ body {
   gap: 1rem;
 }
 
-.app-header h1 {
+.app-title {
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0;
@@ -510,5 +510,184 @@ body {
 @media (max-width: 500px) {
   .rating-buttons {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Topic selection screen ─────────────────────────────────────────────── */
+
+.topic-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+  padding: 3rem 0;
+}
+
+.topic-selection-header {
+  text-align: center;
+}
+
+.app-title-large {
+  font-size: 2.8rem;
+  font-weight: 800;
+  margin: 0;
+  color: #61dafb;
+  letter-spacing: -0.03em;
+}
+
+.app-subtitle {
+  margin: 0.5rem 0 0;
+  color: #8b95a8;
+  font-size: 1rem;
+}
+
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+
+.topic-card {
+  position: relative;
+  background: #161b27;
+  border: 1px solid #242b3d;
+  border-radius: 16px;
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, transform 0.12s, box-shadow 0.15s;
+  text-align: left;
+  font-family: inherit;
+  overflow: hidden;
+}
+
+.topic-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--topic-color, #61dafb);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+}
+
+.topic-card:hover::after {
+  transform: scaleX(1);
+}
+
+.topic-card:hover {
+  background: #1b2030;
+  border-color: var(--topic-color, #61dafb);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.topic-card-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+
+.topic-card-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #e8eaf0;
+}
+
+.topic-card-count {
+  font-size: 0.8rem;
+  color: #8b95a8;
+}
+
+/* ── Study screen header extras ─────────────────────────────────────────── */
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid #242b3d;
+  color: #8b95a8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.38rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  border-color: #61dafb;
+  color: #61dafb;
+}
+
+.topic-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--topic-color, #61dafb);
+  background: #1e2230;
+  border: 1px solid #2e3550;
+  padding: 0.3rem 0.8rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Tag filter ──────────────────────────────────────────────────────────── */
+
+.tag-filter {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.tag-chip {
+  background: #1e2230;
+  border: 1px solid #2e3550;
+  color: #8b95a8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.28rem 0.72rem;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  font-family: inherit;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+
+.tag-chip:hover:not(.tag-chip-active) {
+  border-color: #3d4f6e;
+  color: #c5cfe0;
+}
+
+.tag-chip-active {
+  background: #1e2d45;
+  border-color: #61dafb;
+  color: #61dafb;
+}
+
+@media (max-width: 420px) {
+  .topic-grid {
+    grid-template-columns: 1fr;
   }
 }

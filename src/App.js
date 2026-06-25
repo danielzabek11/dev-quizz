@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import questions from './questions';
+import { TOPICS } from './questions/index';
 import { initCards, getNextCard, rateCard, getSrStats } from './sr';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -27,11 +27,73 @@ function AnswerBlock({ answer }) {
   );
 }
 
+// ── Topic selection screen ───────────────────────────────────────────────────
+
+function TopicSelectionScreen({ onSelect }) {
+  return (
+    <div className="topic-selection">
+      <div className="topic-selection-header">
+        <h1 className="app-title-large">Dev Quizz</h1>
+        <p className="app-subtitle">Select a topic to start studying</p>
+      </div>
+      <div className="topic-grid">
+        {TOPICS.map(topic => (
+          <button
+            key={topic.id}
+            className="topic-card"
+            style={{ '--topic-color': topic.color }}
+            onClick={() => onSelect(topic.id)}
+          >
+            <span className="topic-card-icon">{topic.icon}</span>
+            <span className="topic-card-name">{topic.label}</span>
+            <span className="topic-card-count">{topic.questions.length} questions</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Tag filter ───────────────────────────────────────────────────────────────
+
+function TagFilter({ tags, selectedTags, onToggle }) {
+  return (
+    <div className="tag-filter">
+      <button
+        className={`tag-chip${selectedTags.length === 0 ? ' tag-chip-active' : ''}`}
+        onClick={() => onToggle(null)}
+      >
+        All
+      </button>
+      {tags.map(tag => (
+        <button
+          key={tag}
+          className={`tag-chip${selectedTags.includes(tag) ? ' tag-chip-active' : ''}`}
+          onClick={() => onToggle(tag)}
+        >
+          {tag}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Browse mode ──────────────────────────────────────────────────────────────
 
-function BrowseMode() {
+function BrowseMode({ questions }) {
   const [index, setIndex] = useState(0);
   const [answerVisible, setAnswerVisible] = useState(false);
+
+  if (questions.length === 0) {
+    return (
+      <div className="card">
+        <p className="question-text" style={{ color: '#8b95a8' }}>
+          No questions match the selected tags.
+        </p>
+      </div>
+    );
+  }
+
   const q = questions[index];
 
   function goTo(next) {
@@ -96,7 +158,7 @@ function SrStats({ stats }) {
 }
 
 const RATINGS = [
-  { value: 1, label: 'Again', desc: "Didn't recall",      cls: 'rating-again' },
+  { value: 1, label: 'Again', desc: "Didn't recall",       cls: 'rating-again' },
   { value: 2, label: 'Hard',  desc: 'Recalled with effort', cls: 'rating-hard'  },
   { value: 3, label: 'Good',  desc: 'Recalled correctly',   cls: 'rating-good'  },
   { value: 4, label: 'Easy',  desc: 'Recalled instantly',   cls: 'rating-easy'  },
@@ -118,9 +180,7 @@ function RatingButtons({ onRate }) {
   );
 }
 
-// ── Review chart (session complete screen) ────────────────────────────────────
-
-function ReviewChart({ cards }) {
+function ReviewChart({ cards, questions }) {
   const data = Object.values(cards)
     .filter(c => c.reviewCount > 0)
     .map(c => ({
@@ -140,7 +200,6 @@ function ReviewChart({ cards }) {
       <div className="review-chart-body">
         {data.map((item, i) => {
           const pct = (item.count / max) * 100;
-          // Red (0) → green (120) across the sorted list
           const hue = Math.round((i / Math.max(data.length - 1, 1)) * 120);
           return (
             <div key={item.id} className="chart-row">
@@ -167,9 +226,7 @@ function ReviewChart({ cards }) {
   );
 }
 
-// ── Session complete screen ───────────────────────────────────────────────────
-
-function SrComplete({ stats, totalReviewed, elapsedSeconds, cards, onReset }) {
+function SrComplete({ stats, totalReviewed, elapsedSeconds, cards, questions, onReset }) {
   const avg = (totalReviewed / Math.max(stats.total, 1)).toFixed(1);
   return (
     <div className="sr-complete">
@@ -195,14 +252,12 @@ function SrComplete({ stats, totalReviewed, elapsedSeconds, cards, onReset }) {
       <button className="reveal-btn" onClick={onReset}>Start New Session</button>
 
       <div className="chart-divider" />
-      <ReviewChart cards={cards} />
+      <ReviewChart cards={cards} questions={questions} />
     </div>
   );
 }
 
-// ── SR mode (active session) ──────────────────────────────────────────────────
-
-function SrMode({ cards, totalReviewed, elapsedSeconds, isComplete, answerVisible, onToggleAnswer, onRate, onReset }) {
+function SrMode({ cards, totalReviewed, elapsedSeconds, isComplete, answerVisible, onToggleAnswer, onRate, onReset, questions }) {
   const stats = getSrStats(cards);
 
   if (isComplete) {
@@ -212,6 +267,7 @@ function SrMode({ cards, totalReviewed, elapsedSeconds, isComplete, answerVisibl
         totalReviewed={totalReviewed}
         elapsedSeconds={elapsedSeconds}
         cards={cards}
+        questions={questions}
         onReset={onReset}
       />
     );
@@ -266,21 +322,60 @@ function SrMode({ cards, totalReviewed, elapsedSeconds, isComplete, answerVisibl
 // ── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
+  const [selectedTopicId, setSelectedTopicId] = useState(null);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [mode, setMode] = useState('browse');
-  const [srCards, setSrCards] = useState(() => initCards(questions));
+  const [srCards, setSrCards] = useState({});
   const [totalReviewed, setTotalReviewed] = useState(0);
   const [srAnswerVisible, setSrAnswerVisible] = useState(false);
   const [srElapsedSeconds, setSrElapsedSeconds] = useState(0);
 
-  // Derived: true when every card has been mastered.
-  const isSessionComplete = Object.values(srCards).every(c => c.status === 'mastered');
+  const topic = TOPICS.find(t => t.id === selectedTopicId) ?? null;
+  const allQuestions = topic?.questions ?? [];
+  const availableTags = [...new Set(allQuestions.map(q => q.category))];
+  const filteredQuestions = selectedTags.length === 0
+    ? allQuestions
+    : allQuestions.filter(q => selectedTags.includes(q.category));
 
-  // Timer — ticks only while in SR mode and the session is ongoing.
+  const isSessionComplete =
+    Object.keys(srCards).length > 0 &&
+    Object.values(srCards).every(c => c.status === 'mastered');
+
   useEffect(() => {
-    if (mode !== 'sr' || isSessionComplete) return;
+    if (mode !== 'sr' || isSessionComplete || !selectedTopicId) return;
     const id = setInterval(() => setSrElapsedSeconds(s => s + 1), 1000);
     return () => clearInterval(id);
-  }, [mode, isSessionComplete]);
+  }, [mode, isSessionComplete, selectedTopicId]);
+
+  function handleSelectTopic(topicId) {
+    const t = TOPICS.find(t => t.id === topicId);
+    setSelectedTopicId(topicId);
+    setSelectedTags([]);
+    setMode('browse');
+    setSrCards(initCards(t.questions));
+    setTotalReviewed(0);
+    setSrAnswerVisible(false);
+    setSrElapsedSeconds(0);
+  }
+
+  function handleTagToggle(tag) {
+    let next;
+    if (tag === null) {
+      next = [];
+    } else if (selectedTags.includes(tag)) {
+      next = selectedTags.filter(t => t !== tag);
+    } else {
+      next = [...selectedTags, tag];
+    }
+    const filtered = next.length === 0
+      ? allQuestions
+      : allQuestions.filter(q => next.includes(q.category));
+    setSelectedTags(next);
+    setSrCards(initCards(filtered));
+    setTotalReviewed(0);
+    setSrAnswerVisible(false);
+    setSrElapsedSeconds(0);
+  }
 
   function handleRate(rating) {
     const currentId = getNextCard(srCards, totalReviewed);
@@ -291,16 +386,37 @@ function App() {
   }
 
   function handleReset() {
-    setSrCards(initCards(questions));
+    setSrCards(initCards(filteredQuestions));
     setTotalReviewed(0);
     setSrAnswerVisible(false);
     setSrElapsedSeconds(0);
   }
 
+  function handleBack() {
+    setSelectedTopicId(null);
+    setSelectedTags([]);
+    setMode('browse');
+  }
+
+  if (!selectedTopicId) {
+    return (
+      <div className="app">
+        <TopicSelectionScreen onSelect={handleSelectTopic} />
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>React Interview Prep</h1>
+        <div className="header-top">
+          <button className="back-btn" onClick={handleBack}>← Topics</button>
+          <h1 className="app-title">Dev Quizz</h1>
+          <span className="topic-pill" style={{ '--topic-color': topic.color }}>
+            {topic.icon} {topic.label}
+          </span>
+        </div>
+        <TagFilter tags={availableTags} selectedTags={selectedTags} onToggle={handleTagToggle} />
         <div className="mode-tabs">
           <button
             className={`mode-tab ${mode === 'browse' ? 'active' : ''}`}
@@ -310,7 +426,7 @@ function App() {
           </button>
           <button
             className={`mode-tab ${mode === 'sr' ? 'active' : ''}`}
-            onClick={() => setMode('sr')}
+            onClick={() => { setMode('sr'); setSrAnswerVisible(false); }}
           >
             Spaced Repetition
           </button>
@@ -319,7 +435,10 @@ function App() {
 
       <main>
         {mode === 'browse' ? (
-          <BrowseMode />
+          <BrowseMode
+            key={`${selectedTopicId}-${selectedTags.join(',')}`}
+            questions={filteredQuestions}
+          />
         ) : (
           <SrMode
             cards={srCards}
@@ -330,6 +449,7 @@ function App() {
             onToggleAnswer={() => setSrAnswerVisible(v => !v)}
             onRate={handleRate}
             onReset={handleReset}
+            questions={filteredQuestions}
           />
         )}
       </main>
